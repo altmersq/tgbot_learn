@@ -79,41 +79,49 @@ def handle_predict(message):
     else:
         bot.send_message(chat_id, "Пожалуйста, сначала введите /name и /age.")
 
+number_to_guess = None  # Глобальная переменная для числа, которое бот пытается угадать
+guess_range = (1, 100)
+
 @bot.message_handler(commands=['minigame'])
 def minigame(message):
+    global number_to_guess 
+    global guess_range
     chat_id = message.chat.id
-    number_to_guess = random.randint(1, 100)
-    bot.send_message(chat_id, "Загадай число от 1 до 100, а я попробую его угадать!")
+    bot.send_message(chat_id, "Загадай число от 1 до 100, а я буду пытаться угадать.")
+    number_to_guess = random.randint(guess_range[0], guess_range[1])
+    send_guess_keyboard(chat_id)
 
-    # Функция для отправки сообщения с кнопками
-    def send_guess_keyboard():
-        markup = types.InlineKeyboardMarkup(row_width=3)
-        bigger_button = types.InlineKeyboardButton("Больше", callback_data="bigger")
-        smaller_button = types.InlineKeyboardButton("Меньше", callback_data="smaller")
-        answer_button = types.InlineKeyboardButton("Ответ", callback_data="answer")
-        markup.add(bigger_button, answer_button, smaller_button)
-        bot.send_message(chat_id, "Это число:", reply_markup=markup)
-
-    send_guess_keyboard()
+# Функция для отправки сообщения с кнопками
+def send_guess_keyboard(chat_id):
+    markup = types.InlineKeyboardMarkup(row_width=3)
+    bigger_button = types.InlineKeyboardButton("Больше", callback_data="bigger")
+    smaller_button = types.InlineKeyboardButton("Меньше", callback_data="smaller")
+    equal_button = types.InlineKeyboardButton("Правильно", callback_data="equal")
+    markup.add(bigger_button, equal_button, smaller_button)
+    bot.send_message(chat_id, f"Ты загадал число "+str(number_to_guess), reply_markup=markup)
 
 # Обработка кнопок
 @bot.callback_query_handler(func=lambda call: True)
 def handle_buttons(call):
+    global number_to_guess  
+    global guess_range
     chat_id = call.message.chat.id
     message_id = call.message.message_id
 
     if call.message:
         if call.data == "bigger":
             bot.answer_callback_query(call.id)
-            bot.send_message(chat_id, "Моё число больше.")
-            bot.send_guess_keyboard()
+            guess_range = (number_to_guess + 1, guess_range[1])
+            number_to_guess = random.randint(number_to_guess + 1, guess_range[1])
+            send_guess_keyboard(chat_id)
         elif call.data == "smaller":
             bot.answer_callback_query(call.id)
-            bot.send_message(chat_id, "Моё число меньше.")
-            bot.send_guess_keyboard()
-        elif call.data == "answer":
+            guess_range = (guess_range[0], number_to_guess - 1)
+            number_to_guess = random.randint(guess_range[0], number_to_guess - 1)
+            send_guess_keyboard(chat_id)
+        elif call.data == "equal":
             bot.answer_callback_query(call.id)
-            bot.send_message(chat_id, f"Правильный ответ: {number_to_guess}")
+            bot.send_message(chat_id, "Ура! Я угадал число.")
             bot.delete_message(chat_id, message_id)
 
 
