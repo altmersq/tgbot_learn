@@ -1,4 +1,5 @@
 import telebot
+from telebot import types
 import random
 
 # Загрузка токена из файла token.txt
@@ -77,6 +78,44 @@ def handle_predict(message):
             bot.send_message(chat_id, "Пожалуйста, сначала введите /name и /age.")
     else:
         bot.send_message(chat_id, "Пожалуйста, сначала введите /name и /age.")
+
+@bot.message_handler(commands=['minigame'])
+def minigame(message):
+    chat_id = message.chat.id
+    number_to_guess = random.randint(1, 100)
+    bot.send_message(chat_id, "Загадай число от 1 до 100, а я попробую его угадать!")
+
+    # Функция для отправки сообщения с кнопками
+    def send_guess_keyboard():
+        markup = types.InlineKeyboardMarkup(row_width=3)
+        bigger_button = types.InlineKeyboardButton("Больше", callback_data="bigger")
+        smaller_button = types.InlineKeyboardButton("Меньше", callback_data="smaller")
+        answer_button = types.InlineKeyboardButton("Ответ", callback_data="answer")
+        markup.add(bigger_button, answer_button, smaller_button)
+        bot.send_message(chat_id, "Это число:", reply_markup=markup)
+
+    send_guess_keyboard()
+
+# Обработка кнопок
+@bot.callback_query_handler(func=lambda call: True)
+def handle_buttons(call):
+    chat_id = call.message.chat.id
+    message_id = call.message.message_id
+
+    if call.message:
+        if call.data == "bigger":
+            bot.answer_callback_query(call.id)
+            bot.send_message(chat_id, "Моё число больше.")
+            bot.send_guess_keyboard()
+        elif call.data == "smaller":
+            bot.answer_callback_query(call.id)
+            bot.send_message(chat_id, "Моё число меньше.")
+            bot.send_guess_keyboard()
+        elif call.data == "answer":
+            bot.answer_callback_query(call.id)
+            bot.send_message(chat_id, f"Правильный ответ: {number_to_guess}")
+            bot.delete_message(chat_id, message_id)
+
 
 # Обработчик всех сообщений пользователя
 @bot.message_handler(func=lambda message: True)
