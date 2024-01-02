@@ -1,18 +1,82 @@
-import os
-import requests
 import telebot
+import random
 
-
+# Загрузка токена из файла token.txt
 with open('token.txt', 'r') as file:
     token = file.read().strip()
 
 # Инициализация бота
 bot = telebot.TeleBot(token)
 
+# Словарь для хранения данных пользователей
+users = {}
+
 # Обработчик команды /start
 @bot.message_handler(commands=['start'])
 def handle_start(message):
-    bot.reply_to(message, "Готов!")
+    bot.reply_to(message, "Привет! Я бот-предсказатель возраста и имени. Введи /name и /age для начала.")
+
+# Обработчик команды /name
+@bot.message_handler(commands=['name'])
+def handle_name(message):
+    chat_id = message.chat.id
+    bot.send_message(chat_id, "Введите ваше имя:")
+    bot.register_next_step_handler(message, save_name)
+
+def save_name(message):
+    chat_id = message.chat.id
+    name = message.text
+    users[chat_id] = {'name': name}
+    bot.send_message(chat_id, f"Спасибо! Ваше имя сохранено как {name}. Теперь введите /age.")
+
+# Обработчик команды /age
+@bot.message_handler(commands=['age'])
+def handle_age(message):
+    chat_id = message.chat.id
+    bot.send_message(chat_id, "Введите ваш возраст:")
+    bot.register_next_step_handler(message, save_age, chat_id)
+
+def save_age(message, chat_id):
+    try:
+        age = int(message.text)
+        if chat_id not in users:
+            users[chat_id] = {}
+        users[chat_id]['age'] = age
+        bot.send_message(chat_id, f"Спасибо! Ваш возраст сохранен как {age}.")
+    except ValueError:
+        bot.send_message(chat_id, "Пожалуйста, введите корректный возраст (целое число).")
+        
+# Обработчик команды /help
+@bot.message_handler(commands=['help'])
+def handle_help(message):
+    chat_id = message.chat.id
+    help_text = (
+        "Список команд:\n"
+        "/start - Начать\n"
+        "/name - Ввести имя\n"
+        "/age - Ввести возраст\n"
+        "/help - Справка\n"
+        "/predict - Получить предсказание"
+    )
+    bot.send_message(chat_id, help_text)
+
+# Обработчик команды /predict
+@bot.message_handler(commands=['predict'])
+def handle_predict(message):
+    chat_id = message.chat.id
+    if chat_id in users:
+        user_data = users[chat_id]
+        name = user_data.get('name')
+        age = user_data.get('age')
+        if name and age:
+            random_year = random.randint(2024, 2124)  # Рандомный год с 2024 по 2124
+            future_age = random_year - 2024 + age  # Возраст в будущем году
+            prediction_text = f"Я вижу, вижу, что Вам, {name}, в {random_year} будет {future_age}!"
+            bot.send_message(chat_id, prediction_text)
+        else:
+            bot.send_message(chat_id, "Пожалуйста, сначала введите /name и /age.")
+    else:
+        bot.send_message(chat_id, "Пожалуйста, сначала введите /name и /age.")
 
 # Обработчик всех сообщений пользователя
 @bot.message_handler(func=lambda message: True)
